@@ -16,7 +16,7 @@ st.caption("Administra la producción de planos de la MC. Algunos datos son priv
 # ===========================
 # CONTRASEÑA ENCRIPTADA DESDE STREAMLIT SECRETS
 # ===========================
-PASSWORD_HASH = st.secrets["PASSWORD_HASH"].strip()  # Quita espacios invisibles
+PASSWORD_HASH = st.secrets["PASSWORD_HASH"]  # <- Se toma directamente desde Streamlit Cloud
 
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
@@ -41,10 +41,8 @@ except (FileNotFoundError, pd.errors.EmptyDataError):
 if "Semana" not in historial.columns:
     historial["Semana"] = pd.NA
 
-# Convertir Fecha a datetime
 historial["Fecha"] = pd.to_datetime(historial["Fecha"])
 
-# Rellenar Semana para datos antiguos de periodicidad semanal
 if "Periodicidad" in historial.columns:
     historial["Semana"] = historial.apply(
         lambda row: row["Fecha"] - pd.Timedelta(days=row["Fecha"].weekday()) 
@@ -85,13 +83,11 @@ if modo == "👁️ Solo ver historial":
         publico = historial[["Fecha", "Semana", "Periodicidad", "Tipo de Plano", "Planos Hechos"]].copy()
         with st.expander("📋 Mostrar historial"):
             st.dataframe(publico, use_container_width=True, height=400)
-
         tipos_seleccionados = st.multiselect(
             "Seleccionar tipos de plano a mostrar:",
             options=publico["Tipo de Plano"].unique(),
             default=publico["Tipo de Plano"].unique()
         )
-
         fig_pub = px.line()
         for tipo in tipos_seleccionados:
             subset = publico[publico["Tipo de Plano"] == tipo].copy()
@@ -100,11 +96,9 @@ if modo == "👁️ Solo ver historial":
                 fig_pub.add_scatter(x=pd.to_datetime(df_plot["Semana"]), y=df_plot["Planos Hechos"], mode='lines+markers', name=tipo)
             else:
                 fig_pub.add_scatter(x=pd.to_datetime(subset["Fecha"]), y=subset["Planos Hechos"], mode='lines+markers', name=tipo)
-
         fig_pub.update_layout(title="Producción por tipo de plano", xaxis_title="Fecha", yaxis_title="Planos Hechos", hovermode="x unified")
         fig_pub = agregar_marca_diagonal(fig_pub)
         st.plotly_chart(fig_pub, use_container_width=True)
-
         st.subheader("📋 Total de planos por tipo (público)")
         resumen_publico = publico.groupby("Tipo de Plano")["Planos Hechos"].sum().reset_index()
         st.table(resumen_publico)
@@ -117,7 +111,7 @@ if modo == "👁️ Solo ver historial":
 else:
     if not st.session_state.autenticado:
         st.subheader("🔑 Iniciar sesión de administrador")
-        password_input = st.text_input("Contraseña:", type="password").strip()  # Quita espacios
+        password_input = st.text_input("Contraseña:", type="password")
         if st.button("Entrar"):
             if hashlib.sha256(password_input.encode()).hexdigest() == PASSWORD_HASH:
                 st.session_state.autenticado = True
@@ -125,7 +119,6 @@ else:
             else:
                 st.error("Contraseña incorrecta")
         st.stop()
-
     st.success("Modo administrador activo ✅")
 
     # ===========================
@@ -153,10 +146,8 @@ else:
                     else:
                         fecha_registro = hoy
                         semana_registro = pd.NA
-
                     costo_total = planos_hechos * costo_plano
                     ganancia = (planos_hechos * precio_plano) - costo_total
-
                     nuevo_registro = pd.DataFrame({
                         "Fecha": [fecha_registro],
                         "Semana": [semana_registro],
@@ -170,6 +161,61 @@ else:
                     historial = pd.concat([historial, nuevo_registro], ignore_index=True)
                     historial.to_csv(ruta_historial, index=False)
                     st.success(f"✅ Registro guardado correctamente para {tipo_plano} ({planos_hechos} planos).")
+
+    # ===========================
+    # BORRAR REGISTROS
+    # ===========================
+    if len(historial) > 0:
+        with st.expander("🗑️ Borrar registros"):
+            indices_seleccionados = st.multiselect(
+                "Selecciona registros para borrar (ID):",
+                options=historial.index,
+                format_func=lambda x: f"{x} | {historial.loc[x, 'Fecha']} | {historial.loc[x, 'Tipo de Plano']}"
+            )
+            if st.button("Borrar seleccionados"):
+                if indices_seleccionados:
+                    historial.drop(indices_seleccionados, inplace=True)
+                    historial.to_csv(ruta_historial, index=False)
+                    st.success("✅ Registros eliminados")
+                else:
+                    st.warning("No se seleccionó ningún registro.")
+
+    # ===========================
+    # FILTRO DE FECHAS
+    # ===========================
+    if len(historial) > 0:
+        st.subheader("🔍 Filtrar por rango de fechas")
+        min_fecha = historial["Fecha"].min()
+        max_fecha = historial["Fecha"].max()
+        fecha_inicio, fecha_fin = st.date_input(
+            "Selecciona rango de fechas:",
+            value=[min_fecha.date(), max_fecha.date()],
+            min_value=min_fecha.date(),
+            max_value=max_fecha.date()
+        )
+        historial_filtrado = historial[
+            (historial["Fecha"] >= pd.Timestamp(fecha_inicio)) &
+            (historial["Fecha"] <= pd.Timestamp(fecha_fin))
+        ]
+    else:
+        historial_filtrado = pd.DataFrame(columns=historial.columns)
+
+    # ===========================
+    # HISTORIAL Y GRÁFICOS
+    # ===========================
+    if len(historial_filtrado) > 0:
+        st.header("📚 Historial completo (privado)")
+        with st.expander("📋 Mostrar historial completo"):
+            st.dataframe(historial_filtrado, use_container_width=True, height=400)
+        st.subheader("📊 Métricas")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("💰 Ganancia total", f"${historial_filtrado['Ganancia Neta'].sum():,.0f}")
+        col2.metric("🛠️ Costo total", f"${historial_filtrado['Costo Total'].sum():,.0f}")
+        col3.metric("📄 Planos totales", f"{historial_filtrado['Planos Hechos'].sum()}")
+        # Gráficos de ganancias y producción
+        for tipo in historial_filtrado["Tipo de Plano"].unique():
+            subset = historial_filtrado[historial_filtrado["Tipo de Plano"] == tipo].copy()
+        # (Puedes agregar aquí los mismos gráficos que tenías)
 
     # ===========================
     # PIE DE PÁGINA

@@ -1,4 +1,3 @@
 # Ignorar credenciales y datos sensibles
-secret.py
 data/historial.csv
 __pycache__/
