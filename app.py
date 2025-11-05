@@ -16,7 +16,8 @@ st.caption("Administra la producción de planos de la MC. Algunos datos son priv
 # ===========================
 # CONTRASEÑA ENCRIPTADA
 # ===========================
-from secret import PASSWORD_HASH
+PASSWORD_HASH = "e2c569be17396eca2a2e3c11578123ed5c28b0a0c1e5e63f8c3f9b8a0d6b3b0b"
+
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
 
@@ -34,9 +35,7 @@ except (FileNotFoundError, pd.errors.EmptyDataError):
         "Precio por Plano", "Costo Total", "Ganancia Neta"
     ])
 
-# ===========================
 # Asegurar columna Semana
-# ===========================
 if "Semana" not in historial.columns:
     historial["Semana"] = pd.NA
 
