@@ -16,7 +16,7 @@ st.caption("Administra la producción de planos de la MC. Algunos datos son priv
 # ===========================
 # CONTRASEÑA ENCRIPTADA DESDE STREAMLIT SECRETS
 # ===========================
-PASSWORD_HASH = st.secrets["PASSWORD_HASH"]  # <-- se toma desde Streamlit Cloud
+PASSWORD_HASH = st.secrets["PASSWORD_HASH"].strip()  # Quita espacios invisibles
 
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
@@ -83,7 +83,6 @@ if modo == "👁️ Solo ver historial":
     st.header("📊 Historial de producción (vista pública)")
     if len(historial) > 0:
         publico = historial[["Fecha", "Semana", "Periodicidad", "Tipo de Plano", "Planos Hechos"]].copy()
-
         with st.expander("📋 Mostrar historial"):
             st.dataframe(publico, use_container_width=True, height=400)
 
@@ -118,7 +117,7 @@ if modo == "👁️ Solo ver historial":
 else:
     if not st.session_state.autenticado:
         st.subheader("🔑 Iniciar sesión de administrador")
-        password_input = st.text_input("Contraseña:", type="password")
+        password_input = st.text_input("Contraseña:", type="password").strip()  # Quita espacios
         if st.button("Entrar"):
             if hashlib.sha256(password_input.encode()).hexdigest() == PASSWORD_HASH:
                 st.session_state.autenticado = True
