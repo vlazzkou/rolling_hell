@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
-from datetime import date, timedelta
+from datetime import date
 import hashlib
 import plotly.express as px
 
@@ -16,7 +16,8 @@ st.caption("Administra la producción de planos de la MC. Algunos datos son priv
 # ===========================
 # CONTRASEÑA ENCRIPTADA
 # ===========================
-PASSWORD_HASH = "e2c569be17396eca2a2e3c11578123ed5c28b0a0c1e5e63f8c3f9b8a0d6b3b0b"
+# Hash de la contraseña 2374
+PASSWORD_HASH = "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"
 
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
@@ -35,7 +36,9 @@ except (FileNotFoundError, pd.errors.EmptyDataError):
         "Precio por Plano", "Costo Total", "Ganancia Neta"
     ])
 
+# ===========================
 # Asegurar columna Semana
+# ===========================
 if "Semana" not in historial.columns:
     historial["Semana"] = pd.NA
 
