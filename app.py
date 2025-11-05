@@ -14,6 +14,14 @@ st.caption("Cálculo de planos de la MC 📐")
 st.caption("Administra la producción de planos de la MC. Algunos datos son privados 🔒")
 
 # ===========================
+# CONTRASEÑA ENCRIPTADA DESDE STREAMLIT SECRETS
+# ===========================
+PASSWORD_HASH = st.secrets["PASSWORD_HASH"]  # <-- se toma desde Streamlit Cloud
+
+if "autenticado" not in st.session_state:
+    st.session_state.autenticado = False
+
+# ===========================
 # CARGAR HISTORIAL
 # ===========================
 os.makedirs("data", exist_ok=True)
@@ -27,7 +35,9 @@ except (FileNotFoundError, pd.errors.EmptyDataError):
         "Precio por Plano", "Costo Total", "Ganancia Neta"
     ])
 
+# ===========================
 # Asegurar columna Semana
+# ===========================
 if "Semana" not in historial.columns:
     historial["Semana"] = pd.NA
 
@@ -106,12 +116,6 @@ if modo == "👁️ Solo ver historial":
 # MODO ADMIN
 # ===========================
 else:
-    if "autenticado" not in st.session_state:
-        st.session_state.autenticado = False
-
-    # Obtener hash desde Streamlit Secrets
-    PASSWORD_HASH = st.secrets["PASSWORD_HASH"]
-
     if not st.session_state.autenticado:
         st.subheader("🔑 Iniciar sesión de administrador")
         password_input = st.text_input("Contraseña:", type="password")
@@ -169,9 +173,7 @@ else:
                     st.success(f"✅ Registro guardado correctamente para {tipo_plano} ({planos_hechos} planos).")
 
     # ===========================
-    # RESTO DEL CÓDIGO (Borrar registros, filtros, gráficos...)
+    # PIE DE PÁGINA
     # ===========================
-    # Lo dejas igual que en tu código actual
-
     st.markdown("---")
     st.caption("© Vlazkou2025")
