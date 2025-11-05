@@ -14,15 +14,6 @@ st.caption("Cálculo de planos de la MC 📐")
 st.caption("Administra la producción de planos de la MC. Algunos datos son privados 🔒")
 
 # ===========================
-# CONTRASEÑA ENCRIPTADA
-# ===========================
-# Hash de la contraseña 2374
-PASSWORD_HASH = "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"
-
-if "autenticado" not in st.session_state:
-    st.session_state.autenticado = False
-
-# ===========================
 # CARGAR HISTORIAL
 # ===========================
 os.makedirs("data", exist_ok=True)
@@ -36,9 +27,7 @@ except (FileNotFoundError, pd.errors.EmptyDataError):
         "Precio por Plano", "Costo Total", "Ganancia Neta"
     ])
 
-# ===========================
 # Asegurar columna Semana
-# ===========================
 if "Semana" not in historial.columns:
     historial["Semana"] = pd.NA
 
@@ -117,6 +106,12 @@ if modo == "👁️ Solo ver historial":
 # MODO ADMIN
 # ===========================
 else:
+    if "autenticado" not in st.session_state:
+        st.session_state.autenticado = False
+
+    # Obtener hash desde Streamlit Secrets
+    PASSWORD_HASH = st.secrets["PASSWORD_HASH"]
+
     if not st.session_state.autenticado:
         st.subheader("🔑 Iniciar sesión de administrador")
         password_input = st.text_input("Contraseña:", type="password")
@@ -174,87 +169,9 @@ else:
                     st.success(f"✅ Registro guardado correctamente para {tipo_plano} ({planos_hechos} planos).")
 
     # ===========================
-    # BORRAR REGISTROS
+    # RESTO DEL CÓDIGO (Borrar registros, filtros, gráficos...)
     # ===========================
-    if len(historial) > 0:
-        with st.expander("🗑️ Borrar registros"):
-            indices_seleccionados = st.multiselect(
-                "Selecciona registros para borrar (ID):",
-                options=historial.index,
-                format_func=lambda x: f"{x} | {historial.loc[x, 'Fecha']} | {historial.loc[x, 'Tipo de Plano']}"
-            )
-            if st.button("Borrar seleccionados"):
-                if indices_seleccionados:
-                    historial.drop(indices_seleccionados, inplace=True)
-                    historial.to_csv(ruta_historial, index=False)
-                    st.success("✅ Registros eliminados")
-                else:
-                    st.warning("No se seleccionó ningún registro.")
+    # Lo dejas igual que en tu código actual
 
-    # ===========================
-    # FILTRO DE FECHAS
-    # ===========================
-    if len(historial) > 0:
-        st.subheader("🔍 Filtrar por rango de fechas")
-        min_fecha = historial["Fecha"].min()
-        max_fecha = historial["Fecha"].max()
-
-        fecha_inicio, fecha_fin = st.date_input(
-            "Selecciona rango de fechas:",
-            value=[min_fecha.date(), max_fecha.date()],
-            min_value=min_fecha.date(),
-            max_value=max_fecha.date()
-        )
-
-        historial_filtrado = historial[
-            (historial["Fecha"] >= pd.Timestamp(fecha_inicio)) &
-            (historial["Fecha"] <= pd.Timestamp(fecha_fin))
-        ]
-    else:
-        historial_filtrado = pd.DataFrame(columns=historial.columns)
-
-    # ===========================
-    # HISTORIAL Y GRÁFICOS
-    # ===========================
-    if len(historial_filtrado) > 0:
-        st.header("📚 Historial completo (privado)")
-        with st.expander("📋 Mostrar historial completo"):
-            st.dataframe(historial_filtrado, use_container_width=True, height=400)
-
-        st.subheader("📊 Métricas")
-        col1, col2, col3 = st.columns(3)
-        col1.metric("💰 Ganancia total", f"${historial_filtrado['Ganancia Neta'].sum():,.0f}")
-        col2.metric("🛠️ Costo total", f"${historial_filtrado['Costo Total'].sum():,.0f}")
-        col3.metric("📄 Planos totales", f"{historial_filtrado['Planos Hechos'].sum()}")
-
-        # Gráfico de ganancias
-        fig_ganancia = px.line()
-        for tipo in historial_filtrado["Tipo de Plano"].unique():
-            subset = historial_filtrado[historial_filtrado["Tipo de Plano"] == tipo].copy()
-            if subset["Semana"].notna().any():
-                df_plot = subset.groupby("Semana")["Ganancia Neta"].sum().reset_index()
-                fig_ganancia.add_scatter(x=pd.to_datetime(df_plot["Semana"]), y=df_plot["Ganancia Neta"], mode='lines+markers', name=tipo)
-            else:
-                fig_ganancia.add_scatter(x=pd.to_datetime(subset["Fecha"]), y=subset["Ganancia Neta"], mode='lines+markers', name=tipo)
-        fig_ganancia.update_layout(title="Evolución de ganancias por tipo de plano", xaxis_title="Fecha", yaxis_title="Ganancia Neta ($)")
-        fig_ganancia = agregar_marca_diagonal(fig_ganancia)
-        st.plotly_chart(fig_ganancia, use_container_width=True)
-
-        # Gráfico de producción
-        fig_prod = px.line()
-        for tipo in historial_filtrado["Tipo de Plano"].unique():
-            subset = historial_filtrado[historial_filtrado["Tipo de Plano"] == tipo].copy()
-            if subset["Semana"].notna().any():
-                df_plot = subset.groupby("Semana")["Planos Hechos"].sum().reset_index()
-                fig_prod.add_scatter(x=pd.to_datetime(df_plot["Semana"]), y=df_plot["Planos Hechos"], mode='lines+markers', name=tipo)
-            else:
-                fig_prod.add_scatter(x=pd.to_datetime(subset["Fecha"]), y=subset["Planos Hechos"], mode='lines+markers', name=tipo)
-        fig_prod.update_layout(title="Producción por tipo de plano", xaxis_title="Fecha", yaxis_title="Planos Hechos")
-        fig_prod = agregar_marca_diagonal(fig_prod)
-        st.plotly_chart(fig_prod, use_container_width=True)
-
-    # ===========================
-    # PIE DE PÁGINA
-    # ===========================
     st.markdown("---")
     st.caption("© Vlazkou2025")
